@@ -1,0 +1,88 @@
+spark:
+  app_name: NewsStoragePipeline
+  master: "local[*]"
+  executor_memory: 2g
+  driver_memory: 1g
+  shuffle_partitions: 100
+  streaming_batch_interval: "10 seconds"
+
+iceberg:
+  catalog_name: news_catalog
+  warehouse_path: file:///data/iceberg_warehouse
+  table_name: articles
+  format: parquet
+  partition_spec: ["days(published)", "category"]
+  write_distribution_mode: "hash"
+  catalog_impl: "org.apache.iceberg.aws.glue.GlueCatalog"
+
+# cassandra configuration
+cassandra:
+  host: "localhost"
+  port: 9042
+  keyspace: news_keyspace
+  table: news_articles
+  replication:
+    strategy: "SimpleStrategy"
+    replication_factor: 3
+  consistency_level: "LOCAL_QUORUM"
+# Kafka Configuration
+kafka:
+  bootstrap_servers: "localhost:9092"
+  topics: "raw_news"
+  group_id: "news_storage_consumer"
+  starting_offset: "latest" ##earliest"
+# Data Retention
+retention:
+  hot_data_days: 7      # Cassandra
+  analytical_data_days: 365   # Iceberg
+
+# Enrichment Settings
+enrichment:
+  enabled: true
+  entities: true
+  sentiment: true
+  topics: true
+  keywords: true
+
+
+
+## remove if not using HDFS and HBase
+storage:
+  hdfs:
+    host: localhost
+    port: 9000
+    user: hadoop
+    base_path: /data/news
+    formats:
+      - cold: "parquet"
+      - archive: "avro"
+    compresison: "snappy"
+    replication: 3
+
+  hbase:
+    host: localhost
+    port: 9090
+    table: news
+    column_family: cf
+    max-versions: 3
+    block_cache: true
+    bloom_filter: true
+
+  retention:
+    hot_data_days: 7
+    warm_data_days: 30
+    cold_data_days: 365
+  
+  processing:
+    batch_size: 1000
+    max_workers: 4
+    timeout: 30
+  
+logging:
+  level: INFO
+  
+monitoring:
+  prometheus_port: 8000
+  log_level: INFO
+maintenance:
+  interval_hours: 24
